@@ -1,0 +1,4 @@
+bin/
+obj/
+input.txt
+*.png
