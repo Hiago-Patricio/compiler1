@@ -10,39 +10,37 @@ namespace Compiler
         {
             try
             {
-                using (var sr = new StreamReader(path))
-                {
-                    this.content = sr.ReadToEnd();
-                }
+                using var sr = new StreamReader(path);
+                this.Content = sr.ReadToEnd();
             }
             catch (IOException e)
             {
                 Console.WriteLine(e.Message);
             }
 
-            this.content = System.IO.File.ReadAllText(path);
+            this.Content = System.IO.File.ReadAllText(path);
         }
 
-        private string content {get; set; }
-        private int pos {get; set; }
-        private int state {get; set; }
+        private string Content {get; set; }
+        private int Pos {get; set; }
+        private int State {get; set; }
 
-        private bool isLetter(char c) 
+        private bool IsLetter(char c) 
         {
-            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+            return c is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z');
         }
 
-        private bool isDigit(char c) 
+        private bool IsDigit(char c) 
         {
             return c >= '0' && c <= '9';
         }
 
-        private bool isWhiteSpace(char c) 
+        private bool IsWhiteSpace(char c) 
         {
-            return c == ' ' || c == '\n' || c == '\t';
+            return c is ' ' or '\n' or '\t' or '\r';
         }
 
-        private bool isSymbol(char c)
+        private bool IsSymbol(char c)
         {
             return (new [] {
                 "(", 
@@ -62,7 +60,7 @@ namespace Compiler
             }).Contains(c.ToString());
         }
 
-        private bool isReservedKeyword(string term) 
+        private bool IsReservedKeyword(string term) 
         {    
             return (new [] {
                 "if",
@@ -78,157 +76,156 @@ namespace Compiler
             }).Contains(term);
         }
 
-        private bool isEOF() 
+        private bool IsEof() 
         {
-            return pos >= content.Length;
+            return Pos >= Content.Length;
         }
 
-        private char nextChar() 
+        private char NextChar() 
         {
-            if (isEOF())
+            if (IsEof())
             {
                 return (char)0;
             }
-            return content[pos++];
+            return Content[Pos++];
         }
 
-        private void back()
+        private void Back()
         {
-            pos--;
+            Pos--;
         }
 
-        public Token nextToken()
+        public Token NextToken()
         {
-            if (isEOF()) 
+            if (IsEof()) 
             {
                 return null;
             }
 
-            state = 0;
+            State = 0;
             char c;
             String term = "";
             while (true) 
             {
-                if (isEOF())
+                if (IsEof())
                 {
-                    pos = content.Length + 1;
+                    Pos = Content.Length + 1;
                 }
-                c = nextChar();
-                switch (state)
+                c = NextChar();
+                switch (State)
                 {
                     case 0:
-                        if (isWhiteSpace(c))
+                        if (IsWhiteSpace(c))
                         {
-                            state = 0;
+                            State = 0;
                         } 
-                        else if (isLetter(c))
+                        else if (IsLetter(c))
                         {
-                            state = 1;
+                            State = 1;
                             term += c;
                         }
-                        else if (isSymbol(c))
+                        else if (IsSymbol(c))
                         {
-                            if (c == ':' || c == '>') {
-                                state = 6;
-                            }
-                            else if (c == '<')
+                            State = c switch
                             {
-                                state = 8;
-                            } 
-                            else
-                            {
-                                state = 5;
-                            }
+                                ':' or '>' => 6,
+                                '<' => 8,
+                                _ => 5
+                            };
                             term += c;
                         }
-                        else if (isDigit(c))
+                        else if (IsDigit(c))
                         {
-                            state = 2;
+                            State = 2;
                             term += c;
+                        }
+                        else
+                        {
+                            return null;
                         }
                         break;
                     case 1:
-                        if (isLetter(c) || isDigit(c))
+                        if (IsLetter(c) || IsDigit(c))
                         {
                             term += c;
                         }
-                        else if (isReservedKeyword(term))
+                        else if (IsReservedKeyword(term))
                         {
-                            back();
+                            Back();
                             return new Token(EnumToken.RESERVED_KEYWORD, term);
                         }
                         else
                         {
-                            back();
+                            Back();
                             return new Token(EnumToken.IDENTIFIER, term);
                         }
                         break;
                     case 2:
-                        if (isDigit(c))
+                        if (IsDigit(c))
                         {
                             term += c;
                         }
                         else if (c == '.')
                         {
-                            state = 3;
+                            State = 3;
                             term += c;
                         }
                         else
                         {
-                            back();
+                            Back();
                             return new Token(EnumToken.INTEGER, term);
                         }
                         break;
                     case 3:
-                        if (isDigit(c))
+                        if (IsDigit(c))
                         {
-                            state = 4;
+                            State = 4;
                             term += c;
                         }
                         break;
                     case 4:
-                        if (isDigit(c))
+                        if (IsDigit(c))
                         {
                             term += c;   
                         }
                         else
                         {
-                            back();
+                            Back();
                             return new Token(EnumToken.REAL, term);
                         }
                         break;
                     case 5:
-                        back();
+                        Back();
                         return new Token(EnumToken.SYMBOL, term);
                     case 6:
                         if (c == '=') 
                         {
-                            state = 7;
+                            State = 7;
                             term += c;
                         }
                         else 
                         {
-                            back();
+                            Back();
                             return new Token(EnumToken.SYMBOL, term);
                         }
                         break;
                     case 7:
-                        back();
+                        Back();
                         return new Token(EnumToken.SYMBOL, term);
                     case 8:
-                        if (c == '=' || c == '>')
+                        if (c is '=' or '>')
                         {
-                            state = 9;
+                            State = 9;
                             term += c;
                         }
                         else
                         {
-                            back();
+                            Back();
                             return new Token(EnumToken.SYMBOL, term);
                         }
                         break;
                     case 9:
-                        back();
+                        Back();
                         return new Token(EnumToken.SYMBOL, term);
                 }
             }

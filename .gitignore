@@ -1,4 +1,6 @@
 bin/
 obj/
-input.txt
+.idea/
+*.txt
 *.png
+*.pdf
