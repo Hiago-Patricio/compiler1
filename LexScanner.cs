@@ -11,14 +11,14 @@ namespace Compiler
             try
             {
                 using var sr = new StreamReader(path);
-                this.Content = sr.ReadToEnd();
+                Content = sr.ReadToEnd();
             }
             catch (IOException e)
             {
                 Console.WriteLine(e.Message);
             }
 
-            this.Content = System.IO.File.ReadAllText(path);
+            Content = System.IO.File.ReadAllText(path);
         }
 
         private string Content {get; set; }

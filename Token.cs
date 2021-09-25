@@ -15,8 +15,7 @@ namespace Compiler
 
         public override string ToString()
         {
-            return $"Token[{type},{value}]";
+            return $"Token[{type}, {value}]";
         }
-
     }
 }
