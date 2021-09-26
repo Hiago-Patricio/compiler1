@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Linq;
 
@@ -8,8 +9,9 @@ namespace Compiler
     {
         private LexScanner lexScanner;
         private Token token;
-        private int temp = 0;
-
+        private int temp = 1;
+        private int position = 0;
+        private Dictionary<String, Symbol> SymbolTable = new Dictionary<string, Symbol>();
         private StringBuilder code = new StringBuilder("operator;arg1;arg2;result\n");
 
         public Syntatic(string path)
@@ -23,15 +25,25 @@ namespace Compiler
             programa();
             if (token == null)
             {
+                printSymbolTable();
                 Console.WriteLine(code);
             }
             else
             {
                 throw new Exception(
-                    $"Erro sintático, era esperado um fim de cadeia, mas foi encontrado {(token == null ? "NULL": token.value)}");
+                    $"Erro sintático, era esperado um fim de cadeia, mas foi encontrado {(token == null ? "NULL": token.value)}.");
             }
         }
 
+        public void printSymbolTable()
+        {
+            Console.WriteLine("Symbol Table");
+            foreach (KeyValuePair<string, Symbol> kvp in SymbolTable)
+            {
+                Console.WriteLine($"{kvp.Key} = {kvp.Value}");
+            }
+        }
+        
         private string generateTemp()
         {
             return $"t{temp++}";
@@ -60,7 +72,6 @@ namespace Compiler
         // <programa> -> program ident <corpo> .
         private void programa()
         {
-            Console.WriteLine($"programa");
             if (verifyTokenValue("program"))
             {
                 getToken();
@@ -70,44 +81,43 @@ namespace Compiler
                     getToken();
                     if (!verifyTokenValue("."))
                     {
-                        throw new Exception($"Erro sintático, '.' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}");
+                        throw new Exception($"Erro sintático, '.' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");
                     }
+                    generateCode("PARA", "", "", "");
                     getToken();
                 }
                 else
                 {
-                    throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}");    
+                    throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");    
                 }
             }
             else
             {
-                throw new Exception($"Erro sintático, 'program' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}");
+                throw new Exception($"Erro sintático, 'program' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");
             }
         }
 
         // <corpo> -> <dc> begin <comandos> end
         private void corpo()
         {
-            Console.WriteLine($"corpo");
             dc();
             if (verifyTokenValue("begin"))
             {
                 comandos();
                 if (!verifyTokenValue("end"))
                 {
-                    throw new Exception($"Erro sintático, 'end' ou ';' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}");
+                    throw new Exception($"Erro sintático, 'end' ou ';' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");
                 }
             }
             else
             {
-                throw new Exception($"Erro sintático, 'begin' ou ';' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}");
+                throw new Exception($"Erro sintático, 'begin' ou ';' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");
             }
         }
         
         // <dc> -> <dc_v> <mais_dc>  | λ
         private void dc()
         {
-            Console.WriteLine($"dc");
             getToken();
             if (!verifyTokenValue("begin"))
             {
@@ -119,59 +129,62 @@ namespace Compiler
         // <dc_v> ->  <tipo_var> : <variaveis>
         private void dc_v()
         {
-            Console.WriteLine($"dc_v");
-            tipo_var();
+            var tipoVarDir = tipo_var();
             getToken();
             if (verifyTokenValue(":"))
             {
-                variaveis();
+                variaveis(tipoVarDir);
             }
             else
             {
-                throw new Exception($"Erro sintático, ':' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                throw new Exception($"Erro sintático, ':' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
             }
         }
 
         // <tipo_var> -> real | integer
-        private void tipo_var()
+        private string tipo_var()
         {
-            Console.WriteLine($"tipo_var");
             if (!verifyTokenValue("real", "integer"))
             {
-                throw new Exception($"Erro sintático, 'real', 'integer' ou 'begin' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                throw new Exception($"Erro sintático, 'real', 'integer' ou 'begin' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
             }
+
+            return token.value;
         }
 
         // <variaveis> -> ident <mais_var>
-        private void variaveis()
+        private void variaveis(string variaveisEsq)
         {
-            Console.WriteLine($"variaveis");
             getToken();
             if (verifyTokenType(EnumToken.IDENTIFIER))
             {
-                mais_var();
+                if (SymbolTable.ContainsKey(token.value))
+                {
+                    throw new Exception($"Erro semântico, o identificador '{token.value}' já foi declarado.");
+                }
+                SymbolTable.Add(token.value, new Symbol(variaveisEsq ,token.value));
+                generateCode("ALME", variaveisEsq == "real" ? "0.0" : "0", "", token.value);
+                mais_var(variaveisEsq);
             }
             else
             {
-                throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
             }
         }
         
         // <mais_var> -> , <variaveis> | λ
-        private void mais_var()
+        private void mais_var(string maisVarEsq)
         {
-            Console.WriteLine($"mais_var");
             getToken();
             if (verifyTokenValue(","))
             {
-                variaveis();
+                variaveis(maisVarEsq);
             }
         }
         
         // <mais_dc> -> ; <dc> | λ
         private void mais_dc()
         {
-            Console.WriteLine($"mais_dc");
             if (verifyTokenValue(";"))
             {
                 dc();
@@ -181,7 +194,6 @@ namespace Compiler
         // <comandos> -> <comando> <mais_comandos>
         private void comandos()
         {
-            Console.WriteLine($"comandos");
             comando();
             mais_comandos();
         }
@@ -194,73 +206,94 @@ namespace Compiler
          */
         private void comando()
         {
-            Console.WriteLine($"comando");
             getToken();
             if (verifyTokenValue("read", "write"))
             {
+                var opCode = token.value;
                 getToken();
                 if (verifyTokenValue("("))
                 {
                     getToken();
                     if (verifyTokenType(EnumToken.IDENTIFIER))
                     {
+                        var ident = token.value;
+                        if (!SymbolTable.ContainsKey(ident))
+                        {
+                            throw new Exception($"Erro semântico, o identificador '{ident}' não foi declarado.");
+                        }
+                        
                         getToken();
                         if (!verifyTokenValue(")"))
                         {
-                            throw new Exception($"Erro sintático, ')' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                            throw new Exception($"Erro sintático, ')' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
                         }
+
+                        if (opCode == "read")
+                        {
+                            generateCode("read", "", "", ident);
+                        }
+                        else
+                        {
+                            generateCode("write", ident, "", "");
+                        }
+                        
                         getToken();
                     }
                     else
                     {
-                        throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");    
+                        throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");    
                     }
                 }
                 else
                 {
-                    throw new Exception($"Erro sintático, '(' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                    throw new Exception($"Erro sintático, '(' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
                 }
             }
             else if (verifyTokenType(EnumToken.IDENTIFIER))
             {
+                var ident = token.value;
+                if (!SymbolTable.ContainsKey(ident))
+                {
+                    throw new Exception($"Erro semântico, o identificador '{ident}' não foi declarado.");
+                }
                 getToken();
                 if (verifyTokenValue(":="))
                 {
-                    expressao();
+                    var expressaoDir = expressao();
+                    generateCode(":=", expressaoDir, "", ident);
                 }
                 else
                 {
-                    throw new Exception($"Erro sintático, ':=' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                    throw new Exception($"Erro sintático, ':=' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
                 }
             }
             else if (verifyTokenValue("if"))
             {   
-                condicao();
+                var condicaoDir = condicao();
                 if (verifyTokenValue("then"))
                 {
                     comandos();
                     pfalsa();
                     if (!verifyTokenValue("$"))
                     {
-                        throw new Exception($"Erro sintático, '$' ou ';' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                        throw new Exception($"Erro sintático, '$' ou ';' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
                     }
                     getToken();
                 }
                 else
                 {
-                    throw new Exception($"Erro sintático, 'then' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                    throw new Exception($"Erro sintático, 'then' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
                 }
             }
             else
             {
-                throw new Exception($"Erro sintático, 'read', 'write', 'if' ou identificador era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                throw new Exception($"Erro sintático, 'read', 'write', 'if' ou identificador era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
             }
         }
         
         // <mais_comandos> -> ; <comandos> | λ 
         private void mais_comandos()
         {
-            Console.WriteLine($"mais_comandos");
             if (verifyTokenValue(";"))
             {
                 comandos();
@@ -268,46 +301,53 @@ namespace Compiler
         }
 
         // <expressao> -> <termo> <outros_termos>
-        private void expressao()
+        private string expressao()
         {
-            Console.WriteLine($"expressao");
-            termo();
-            outros_termos();
+            var termoDir = termo();
+            var outrosTermosDir = outros_termos(termoDir);
+
+            return outrosTermosDir;
         }
 
         // <outros_termos> -> <op_ad> <termo> <outros_termos> | λ
-        private void outros_termos()
+        private string outros_termos(string outrosTermosEsq)
         {
-            Console.WriteLine($"outros_termos");
             if (verifyTokenValue("+", "-"))
             {
-                op_ad();
+                var opAdDir = op_ad();
                 getToken();
-                termo();
-                outros_termos();
+                var termoDir = termo();
+                
+                var t = generateTemp();
+                generateCode(opAdDir, outrosTermosEsq, termoDir, t);
+                termoDir = t;
+                
+                return outros_termos(termoDir);
             }
+
+            return outrosTermosEsq;
         }
 
         // <op_ad> -> + | -
-        private void op_ad()
+        private string op_ad()
         {
-            Console.WriteLine($"op_ad");
-            // TODO semântico
+            return token.value;
         }
 
         // <condicao> -> <expressao> <relacao> <expressao>  
-        private void condicao()
+        private string condicao()
         {
-            Console.WriteLine($"condicao");
-            expressao();
-            relacao();
-            expressao();
+            var expressaoDir = expressao();
+            var relacaoDir = relacao();
+            var expressaoLinhaDir = expressao();
+            var t = generateTemp();
+            generateCode(relacaoDir, expressaoDir, expressaoLinhaDir, t);
+            return t;
         }
 
         // <pfalsa> -> else <comandos> | λ  
         private void pfalsa()
         {
-            Console.WriteLine($"pfalsa");
             if (verifyTokenValue("else"))
             {
                 comandos();
@@ -315,82 +355,115 @@ namespace Compiler
         }
 
         // <relacao> -> = | <> | >= | <= | > | <  
-        private void relacao()
+        private string relacao()
         {
-            Console.WriteLine($"relacao");
             if (!verifyTokenValue("=", "<>", "<>", ">=", "<=", ">", "<"))
             {
-                throw new Exception($"Erro sintático, '=', '<>', '>=', '<=', '>' ou '<' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
+                throw new Exception($"Erro sintático, '=', '<>', '>=', '<=', '>' ou '<' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
             }
+
+            return token.value;
         }
 
         // <termo> -> <op_un> <fator> <mais_fatores> 
-        private void termo()
+        private string termo()
         {
-            Console.WriteLine($"termo");
-            op_un();
-            fator();
-            mais_fatores();
+            var opUnDir = op_un();
+            var fatorDir = fator(opUnDir);
+            var maisFatoresDir = mais_fatores(fatorDir);
+
+            return maisFatoresDir;
         }
 
         // <op_un> -> - | λ
-        private void op_un()
+        private string op_un()
         {
-            Console.WriteLine($"op_un");
             if (!verifyTokenType(EnumToken.IDENTIFIER))
             {
                 getToken();
                 if (verifyTokenValue("-"))
                 {
                     getToken();
-                    // TODO
+                    return token.value;
                 }
             }
-            
+            return "";
         }
 
         // <fator> -> ident | numero_int | numero_real | (<expressao>)   
-        private void fator()
+        private string fator(string fatorEsq)
         {
-            Console.WriteLine($"fator");
             if (verifyTokenValue("("))
             {
-                expressao();
+                var expressaoDir = expressao();
+                
                 getToken();
                 if (!verifyTokenValue(")"))
                 {
-                    throw new Exception($"Erro sintático, ')' esperado, mas foi recebido: {(token == null ? "NULL": token.value)}");
+                    throw new Exception($"Erro sintático, ')' esperado, mas foi recebido: {(token == null ? "NULL": token.value)}.");
                 }
+                
+                if (fatorEsq == "-")
+                {
+                    var t = generateTemp();
+                    generateCode("minus", expressaoDir, "", t);
+                    return t;
+                }
+
+                return expressaoDir;
+
             }
             else if (verifyTokenType(EnumToken.IDENTIFIER, EnumToken.INTEGER, EnumToken.REAL))
             {
-                // TODO
+                var identOrNumber = token.value;
+                if (verifyTokenType(EnumToken.IDENTIFIER) && !SymbolTable.ContainsKey(identOrNumber))
+                {
+                    throw new Exception($"Erro semântico, o identificador '{identOrNumber}' não foi declarado.");
+                }
+                
+                if (fatorEsq == "-")
+                {
+                    var t = generateTemp();
+                    generateCode("minus", identOrNumber, "", t);
+                    return t;
+                }
+
+                return identOrNumber;
             }
-            else
-            {
-                throw new Exception($"Erro sintático, identificador, número inteiro, número real ou '(' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}");
-            }
+            
+            throw new Exception($"Erro sintático, identificador, número inteiro, número real ou '(' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
         }
 
         // <mais_fatores> -> <op_mul> <fator> <mais_fatores> | λ  
-        private void mais_fatores()
+        private string mais_fatores(string maisFatoresEsq)
         {
-            Console.WriteLine($"mais_fatores");
             getToken();
             if (verifyTokenValue("*", "/"))
             {
-                op_mul();
+                var opMulDir = op_mul();
                 getToken();
-                fator();
-                mais_fatores();
+                var fatorDir = fator(opMulDir);
+
+                var t = generateTemp();
+                if (opMulDir == "*")
+                {
+                    generateCode("*", maisFatoresEsq, fatorDir, t);
+                }
+                else
+                {
+                    generateCode("/", maisFatoresEsq, fatorDir, t);
+                }
+
+                fatorDir = t;
+                return mais_fatores(fatorDir);
             }
+            return maisFatoresEsq;
         }
 
         // <op_mul> -> * | / 
-        private void op_mul()
+        private string op_mul()
         {
-            Console.WriteLine($"op_mul");
-            // TODO semântico
+            return token.value;
         }
     }
 }

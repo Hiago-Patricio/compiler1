@@ -9,4 +9,8 @@
     <None Remove="automato lexico.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="EnumSymbol.cs" />
+  </ItemGroup>
+
 </Project>
