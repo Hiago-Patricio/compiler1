@@ -28,3 +28,6 @@ This project is a front end compiler, it was designed in the syntax grammar belo
 <pfalsa> -> else <comandos> | λ
 <op_mul> -> * | /
 ```
+
+This automaton was designed to recognize the tokens of the language.
+![alt text](https://github.com/Hiago-Patricio/compiler/blob/main/Automaton.png)
