@@ -10,7 +10,8 @@ namespace Compiler
         private LexScanner lexScanner;
         private Token token;
         private int temp = 1;
-        private int position = 0;
+        private int nextLine = 0;
+        private EnumToken? tipo;
         private Dictionary<String, Symbol> SymbolTable = new Dictionary<string, Symbol>();
         private StringBuilder code = new StringBuilder("operator;arg1;arg2;result\n");
 
@@ -31,7 +32,7 @@ namespace Compiler
             else
             {
                 throw new Exception(
-                    $"Erro sintático, era esperado um fim de cadeia, mas foi encontrado {(token == null ? "NULL": token.value)}.");
+                    $"Erro sintático, era esperado um fim de cadeia, mas foi encontrado '{(token == null ? "NULL": token.value)}'.");
             }
         }
 
@@ -52,6 +53,7 @@ namespace Compiler
         private void generateCode(string op, string arg1, string arg2, string result)
         {
             code.Append($"{op};{arg1};{arg2};{result}\n");
+            nextLine++;
         }
 
         private void getToken()
@@ -81,19 +83,19 @@ namespace Compiler
                     getToken();
                     if (!verifyTokenValue("."))
                     {
-                        throw new Exception($"Erro sintático, '.' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");
+                        throw new Exception($"Erro sintático, '.' era esperado, mas foi encontrado '{(token == null ? "NULL": token.value)}'.");
                     }
                     generateCode("PARA", "", "", "");
                     getToken();
                 }
                 else
                 {
-                    throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");    
+                    throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado '{(token == null ? "NULL": token.value)}'.");    
                 }
             }
             else
             {
-                throw new Exception($"Erro sintático, 'program' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");
+                throw new Exception($"Erro sintático, 'program' era esperado, mas foi encontrado '{(token == null ? "NULL": token.value)}'.");
             }
         }
 
@@ -106,12 +108,12 @@ namespace Compiler
                 comandos();
                 if (!verifyTokenValue("end"))
                 {
-                    throw new Exception($"Erro sintático, 'end' ou ';' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");
+                    throw new Exception($"Erro sintático, 'end' ou ';' era esperado, mas foi encontrado '{(token == null ? "NULL": token.value)}'.");
                 }
             }
             else
             {
-                throw new Exception($"Erro sintático, 'begin' ou ';' era esperado, mas foi encontrado {(token == null ? "NULL": token.value)}.");
+                throw new Exception($"Erro sintático, 'begin' ou ';' era esperado, mas foi encontrado '{(token == null ? "NULL": token.value)}'.");
             }
         }
         
@@ -137,23 +139,27 @@ namespace Compiler
             }
             else
             {
-                throw new Exception($"Erro sintático, ':' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                throw new Exception($"Erro sintático, ':' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
             }
         }
 
         // <tipo_var> -> real | integer
-        private string tipo_var()
+        private EnumToken tipo_var()
         {
-            if (!verifyTokenValue("real", "integer"))
+            if (token.value == "real")
             {
-                throw new Exception($"Erro sintático, 'real', 'integer' ou 'begin' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                return EnumToken.REAL;
             }
-
-            return token.value;
+            else if (token.value == "integer")
+            {
+                return EnumToken.INTEGER;
+            }
+            
+            throw new Exception($"Erro sintático, 'real', 'integer' ou 'begin' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
         }
 
         // <variaveis> -> ident <mais_var>
-        private void variaveis(string variaveisEsq)
+        private void variaveis(EnumToken variaveisEsq)
         {
             getToken();
             if (verifyTokenType(EnumToken.IDENTIFIER))
@@ -163,17 +169,17 @@ namespace Compiler
                     throw new Exception($"Erro semântico, o identificador '{token.value}' já foi declarado.");
                 }
                 SymbolTable.Add(token.value, new Symbol(variaveisEsq ,token.value));
-                generateCode("ALME", variaveisEsq == "real" ? "0.0" : "0", "", token.value);
+                generateCode("ALME", variaveisEsq == EnumToken.REAL ? "0.0" : "0", "", token.value);
                 mais_var(variaveisEsq);
             }
             else
             {
-                throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
             }
         }
         
         // <mais_var> -> , <variaveis> | λ
-        private void mais_var(string maisVarEsq)
+        private void mais_var(EnumToken maisVarEsq)
         {
             getToken();
             if (verifyTokenValue(","))
@@ -225,7 +231,7 @@ namespace Compiler
                         getToken();
                         if (!verifyTokenValue(")"))
                         {
-                            throw new Exception($"Erro sintático, ')' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                            throw new Exception($"Erro sintático, ')' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
                         }
 
                         if (opCode == "read")
@@ -241,12 +247,12 @@ namespace Compiler
                     }
                     else
                     {
-                        throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");    
+                        throw new Exception($"Erro sintático, identificador era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");    
                     }
                 }
                 else
                 {
-                    throw new Exception($"Erro sintático, '(' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                    throw new Exception($"Erro sintático, '(' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
                 }
             }
             else if (verifyTokenType(EnumToken.IDENTIFIER))
@@ -259,12 +265,14 @@ namespace Compiler
                 getToken();
                 if (verifyTokenValue(":="))
                 {
+                    tipo = SymbolTable[ident].type;
                     var expressaoDir = expressao();
+                    tipo = null;
                     generateCode(":=", expressaoDir, "", ident);
                 }
                 else
                 {
-                    throw new Exception($"Erro sintático, ':=' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                    throw new Exception($"Erro sintático, ':=' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
                 }
             }
             else if (verifyTokenValue("if"))
@@ -276,18 +284,18 @@ namespace Compiler
                     pfalsa();
                     if (!verifyTokenValue("$"))
                     {
-                        throw new Exception($"Erro sintático, '$' ou ';' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                        throw new Exception($"Erro sintático, '$' ou ';' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
                     }
                     getToken();
                 }
                 else
                 {
-                    throw new Exception($"Erro sintático, 'then' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                    throw new Exception($"Erro sintático, 'then' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
                 }
             }
             else
             {
-                throw new Exception($"Erro sintático, 'read', 'write', 'if' ou identificador era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                throw new Exception($"Erro sintático, 'read', 'write', 'if' ou identificador era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
             }
         }
         
@@ -359,7 +367,7 @@ namespace Compiler
         {
             if (!verifyTokenValue("=", "<>", "<>", ">=", "<=", ">", "<"))
             {
-                throw new Exception($"Erro sintático, '=', '<>', '>=', '<=', '>' ou '<' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+                throw new Exception($"Erro sintático, '=', '<>', '>=', '<=', '>' ou '<' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
             }
 
             return token.value;
@@ -400,7 +408,7 @@ namespace Compiler
                 getToken();
                 if (!verifyTokenValue(")"))
                 {
-                    throw new Exception($"Erro sintático, ')' esperado, mas foi recebido: {(token == null ? "NULL": token.value)}.");
+                    throw new Exception($"Erro sintático, ')' esperado, mas foi recebido: '{(token == null ? "NULL": token.value)}'.");
                 }
                 
                 if (fatorEsq == "-")
@@ -413,25 +421,47 @@ namespace Compiler
                 return expressaoDir;
 
             }
-            else if (verifyTokenType(EnumToken.IDENTIFIER, EnumToken.INTEGER, EnumToken.REAL))
+            else if (verifyTokenType(EnumToken.INTEGER, EnumToken.REAL))
             {
-                var identOrNumber = token.value;
-                if (verifyTokenType(EnumToken.IDENTIFIER) && !SymbolTable.ContainsKey(identOrNumber))
+                var number = token.value;
+
+                if (tipo != null && token.type != tipo)
                 {
-                    throw new Exception($"Erro semântico, o identificador '{identOrNumber}' não foi declarado.");
+                    throw new Exception($"Erro semântico, os tipos são diferentes.");
                 }
                 
                 if (fatorEsq == "-")
                 {
                     var t = generateTemp();
-                    generateCode("minus", identOrNumber, "", t);
+                    generateCode("minus", number, "", t);
                     return t;
                 }
 
-                return identOrNumber;
+                return number;
+            } else if (verifyTokenType(EnumToken.IDENTIFIER))
+            {
+                var ident = token.value;
+                
+                if (!SymbolTable.ContainsKey(ident))
+                {
+                    throw new Exception($"Erro semântico, o identificador '{ident}' não foi declarado.");
+                }
+
+                if (tipo != null && tipo != SymbolTable[ident].type)
+                {
+                    throw new Exception($"Erro semântico, os tipos são diferentes.");
+                }
+                
+                if (fatorEsq == "-")
+                {
+                    var t = generateTemp();
+                    generateCode("minus", ident, "", t);
+                    return t;
+                }
+
+                return ident;
             }
-            
-            throw new Exception($"Erro sintático, identificador, número inteiro, número real ou '(' era esperado, mas foi encontrado: {(token == null ? "NULL": token.value)}.");
+            throw new Exception($"Erro sintático, identificador, número inteiro, número real ou '(' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
         }
 
         // <mais_fatores> -> <op_mul> <fator> <mais_fatores> | λ  
