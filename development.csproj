@@ -9,6 +9,10 @@
     <None Remove="automato lexico.png" />
     <None Remove="eu.txt" />
     <None Remove="japa.txt" />
+    <None Remove="gramatica sintática.txt" />
+    <None Remove="input.txt" />
+    <None Remove="input2.txt" />
+    <None Remove="quadrupla.pdf" />
   </ItemGroup>
 
   <ItemGroup>
