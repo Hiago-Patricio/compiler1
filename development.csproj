@@ -7,6 +7,8 @@
 
   <ItemGroup>
     <None Remove="automato lexico.png" />
+    <None Remove="eu.txt" />
+    <None Remove="japa.txt" />
   </ItemGroup>
 
   <ItemGroup>

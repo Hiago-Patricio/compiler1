@@ -10,7 +10,7 @@ namespace Compiler
         private LexScanner lexScanner;
         private Token token;
         private int temp = 1;
-        private int nextLine = 0;
+        private int currentLine = 0;
         private EnumToken? tipo;
         private Dictionary<String, Symbol> SymbolTable = new Dictionary<string, Symbol>();
         private StringBuilder code = new StringBuilder("operator;arg1;arg2;result\n");
@@ -26,22 +26,12 @@ namespace Compiler
             programa();
             if (token == null)
             {
-                printSymbolTable();
                 Console.WriteLine(code);
             }
             else
             {
                 throw new Exception(
                     $"Erro sintático, era esperado um fim de cadeia, mas foi encontrado '{(token == null ? "NULL": token.value)}'.");
-            }
-        }
-
-        public void printSymbolTable()
-        {
-            Console.WriteLine("Symbol Table");
-            foreach (KeyValuePair<string, Symbol> kvp in SymbolTable)
-            {
-                Console.WriteLine($"{kvp.Key} = {kvp.Value}");
             }
         }
         
@@ -53,7 +43,7 @@ namespace Compiler
         private void generateCode(string op, string arg1, string arg2, string result)
         {
             code.Append($"{op};{arg1};{arg2};{result}\n");
-            nextLine++;
+            currentLine++;
         }
 
         private void getToken()
@@ -280,8 +270,12 @@ namespace Compiler
                 var condicaoDir = condicao();
                 if (verifyTokenValue("then"))
                 {
+                    generateCode("JF", condicaoDir, "JF_line", "");
                     comandos();
+                    generateCode("goto", "goto_line", "", "");
+                    code.Replace("JF_line", currentLine.ToString());
                     pfalsa();
+                    code.Replace("goto_line", currentLine.ToString());
                     if (!verifyTokenValue("$"))
                     {
                         throw new Exception($"Erro sintático, '$' ou ';' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");
