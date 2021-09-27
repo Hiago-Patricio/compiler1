@@ -13,7 +13,7 @@ namespace Compiler
         private int currentLine = 0;
         private EnumToken? tipo;
         private Dictionary<String, Symbol> SymbolTable = new Dictionary<string, Symbol>();
-        private StringBuilder code = new StringBuilder("operator;arg1;arg2;result\n");
+        private string code = new string("operator;arg1;arg2;result\n");
 
         public Syntatic(string path)
         {
@@ -42,7 +42,7 @@ namespace Compiler
 
         private void generateCode(string op, string arg1, string arg2, string result)
         {
-            code.Append($"{op};{arg1};{arg2};{result}\n");
+            code += $"{op};{arg1};{arg2};{result}\n";
             currentLine++;
         }
 
@@ -59,6 +59,16 @@ namespace Compiler
         private bool verifyTokenType(params EnumToken[] enums)
         {
             return enums.Any(e => token != null && token.type.Equals(e));
+        }
+
+        private void replaceLastOccurence(string oldString)
+        {
+            int lastIndex = code.LastIndexOf(oldString);
+
+            string beginString = code.Substring(0, lastIndex);
+            string endString = code.Substring(lastIndex + oldString.Length);
+
+            code = beginString + currentLine.ToString() + endString;
         }
         
         // <programa> -> program ident <corpo> .
@@ -273,9 +283,9 @@ namespace Compiler
                     generateCode("JF", condicaoDir, "JF_line", "");
                     comandos();
                     generateCode("goto", "goto_line", "", "");
-                    code.Replace("JF_line", currentLine.ToString());
+                    replaceLastOccurence("JF_line");
                     pfalsa();
-                    code.Replace("goto_line", currentLine.ToString());
+                    replaceLastOccurence("goto_line");
                     if (!verifyTokenValue("$"))
                     {
                         throw new Exception($"Erro sintático, '$' ou ';' era esperado, mas foi encontrado: '{(token == null ? "NULL": token.value)}'.");

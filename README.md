@@ -64,9 +64,9 @@ Semantic grammar:
     generateCode("JF", condicao.dir, "JF_line", "")
 } <comandos> {
     generateCode("goto", "goto_line", "", ""),
-    code.replace("JF_line", currentLine)
+    replaceLastOccurence("JF_line")
 } <pfalsa> {
-    code.replace("goto_line", currentLine)
+    replaceLastOccurence("goto_line")
 } $
 <condicao> -> <expressao> <relacao> <expressaoLinha> {
     t = generateTemp(),
